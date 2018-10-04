@@ -1,10 +1,13 @@
 from datetime import datetime
 
-class Zone():
-    global owner, timeConquered
+
+class Zone:
     owner = ""
     global checkpoints
     checkpoints = {}
+
+    def __init__(self, name):
+        self.name = name
 
     def setCheckpoints(self, name, coordinates):
         checkpoints[name] = coordinates
@@ -14,17 +17,22 @@ class Zone():
 
     def setOwner(self, owner):
         self.owner = owner
-        self.timeConquered = datetime.utcnow()
 
     def getOwner(self):
         return self.owner
 
-    def getTimeConquered(self):
-        return self.timeConquered
 
-class Team():
-    global id, points, pointspm, zones, location, locationtime, checkpoints, groups
+class Conquer:
+    def __init__(self, zone):
+        self.zone = zone;
+        self.timeConquered = datetime.utcnow()
+        self.points = 0
+        self.pointspm = 0
+
+
+class Team:
     checkpoints = []
+    conquers = []
 
     def __init__(self, id):
         self.id = id
@@ -63,10 +71,11 @@ class Team():
     def getCheckpoints(self):
         return self.checkpoints
 
-class Group():
-    #global team, token, members, notifications
+
+class Group:
+    # global team, token, members, notifications
     members = []
-    notifications = []
+    notifications = {}
 
     def __init__(self, token, team):
         self.token = token
@@ -75,9 +84,8 @@ class Group():
     def addMember(self, member):
         self.members.append(member)
 
-class Checkpoint():
-    global name, zone
 
+class Checkpoint:
     def setName(self, name):
         self.name = name
 
@@ -89,3 +97,9 @@ class Checkpoint():
 
     def getZone(self):
         return self.zone
+
+    def __init__(self, name, zone, lat, long):
+        self.name = name
+        self.zone = zone
+        self.lat = lat
+        self.long = long
