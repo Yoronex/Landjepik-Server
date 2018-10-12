@@ -1,0 +1,3 @@
+# format: <naam> <HEX-kleur>
+Team1 #483924
+Team2 #847321

@@ -7,22 +7,11 @@ import threading
 import sys
 import os.path
 
-teams = [Team(i, "Naamloos " + str(i)) for i in range(0, 3)]
+teams = []
 distanceThreshold = 15.0
 groups = []
 zones = []
 checkpoints = []
-
-g1 = Group(len(groups), 'AAA', teams[0])
-g1.addMember("Roy")
-g1.addMember("Pietje")
-g1.team.groups.append(g1)
-groups.append(g1)
-
-g2 = Group(len(groups), 'BBB', teams[1])
-g2.addMember('Klaasje')
-g2.team.groups.append(g2)
-groups.append(g2)
 
 def create_app():
     app = Flask(__name__)
@@ -43,12 +32,15 @@ def create_app():
         print('Loading zones...')
         addZones()
         print('Added {} zones'.format(len(zones)))
-        print('Loading checkpoints')
+        print('Loading checkpoints...')
         addCheckpoints()
         print('Added {} checkpoints'.format(len(checkpoints)))
+        print('Loading teams...')
+        addTeams()
+        print('Added {} teams'.format(len(teams)))
 
-    initialize_console()
     initialize_game()
+    initialize_console()
     return app
 
 
@@ -132,6 +124,8 @@ def console():
                     try:
                         for l in lines:
                             w = l.split()
+                            if w[0][0] == "#":
+                                continue
                             zone = next((y for y in zones if y.id == int(w[1])), None)
                             if zone is None:
                                 print("ERROR: Zone met ID {} bestaat niet!".format(w[1]))
@@ -212,8 +206,23 @@ def console():
 
 
 def addZones():
-    zones.append(Zone(len(zones), 'Aap'))
-    zones.append(Zone(len(zones), 'Beer'))
+    with open('zones.txt') as f:
+        lines = f.readlines()
+    try:
+        for l in lines:
+            w = l.split()
+            if w[0][0] == "#":
+                continue
+            coordinates = []
+            for i in range(1, len(w), 2):
+                coordinates.append([w[i], w[i+1]])
+
+            zone = Zone(len(zones), w[0], coordinates)
+            zones.append(zone)
+    except IndexError:
+        print("ERROR: De input in het bestand is ongeldig.")
+    f.close()
+
 
 def addCheckpoints():
     with open('checkpoints.txt') as f:
@@ -221,6 +230,8 @@ def addCheckpoints():
     try:
         for l in lines:
             w = l.split()
+            if w[0][0] == "#":
+                continue
             zone = next((y for y in zones if y.id == int(w[1])), None)
             if zone is None:
                 print("ERROR: Zone met ID {} bestaat niet!".format(w[1]))
@@ -231,6 +242,22 @@ def addCheckpoints():
     except IndexError:
         print("ERROR: De input in het bestand is ongeldig.")
     f.close()
+
+
+def addTeams():
+    with open('teams.txt') as f:
+        lines = f.readlines()
+    try:
+        for l in lines:
+            w = l.split()
+            if w[0][0] == "#":
+                continue
+            team = Team(len(teams), w[0], w[1])
+            teams.append(team)
+    except IndexError:
+        print("ERROR: De input in het bestand is ongeldig")
+    f.close()
+
 
 
 def printCheckpoints(item):
@@ -274,6 +301,17 @@ def findgroup(token):
 
 
 app = create_app()
+
+g1 = Group(len(groups), 'AAA', teams[0])
+g1.addMember("Roy")
+g1.addMember("Pietje")
+g1.team.groups.append(g1)
+groups.append(g1)
+
+g2 = Group(len(groups), 'BBB', teams[1])
+g2.addMember('Klaasje')
+g2.team.groups.append(g2)
+groups.append(g2)
 
 
 @app.route('/')

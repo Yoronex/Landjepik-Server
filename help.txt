@@ -1,0 +1,5 @@
+LandjePik is een spel geschreven door Roy Kakkenberg en Arjan Beumer van Scouting Kornet van Limburg Stirum Olst-Wijhe.
+
+Syntax: <operatie> <specificatie> <parameters>
+- defend    [
+- list      zones        : print een lijst van alle zones
