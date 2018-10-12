@@ -2,13 +2,14 @@ from datetime import datetime
 
 
 class Zone:
-    checkpoints = []
-
-    def __init__(self, ob_id, name):
+    def __init__(self, ob_id, name, coordinates):
         self.id = ob_id
         self.name = name
         self.owner = None
+        self.conquer = None
         self.timeconquered = datetime.utcfromtimestamp(0)
+        self.checkpoints = []
+        self.coordinates = coordinates
 
 
 class Conquer:
@@ -20,26 +21,24 @@ class Conquer:
 
 
 class Team:
-    checkpoints = []
-    conquers = []
-    groups = []
-
-    def __init__(self, ob_id, name):
+    def __init__(self, ob_id, name, color):
         self.id = ob_id
         self.name = name
         self.points = 0
         self.pointspm = 0
+        self.checkpoints = []
+        self.conquers = []
+        self.groups = []
+        self.color = color
 
 
 class Group:
-    # global team, token, members, notifications
-    members = []
-    notifications = []
-
     def __init__(self, ob_id, token, team):
         self.id = ob_id
         self.token = token
         self.team = team
+        self.members = []
+        self.notifications = []
 
     def addMember(self, member):
         self.members.append(member)

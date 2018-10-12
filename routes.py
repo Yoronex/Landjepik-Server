@@ -13,17 +13,21 @@ groups = []
 zones = []
 checkpoints = []
 
-g1 = Group(len(groups), 'AAA', teams[1])
+g1 = Group(len(groups), 'AAA', teams[0])
 g1.addMember("Roy")
 g1.addMember("Pietje")
 g1.team.groups.append(g1)
 groups.append(g1)
 
+g2 = Group(len(groups), 'BBB', teams[1])
+g2.addMember('Klaasje')
+g2.team.groups.append(g2)
+groups.append(g2)
 
 def create_app():
     app = Flask(__name__)
 
-    def initialize():
+    def initialize_console():
         global t1
         t1 = threading.Thread(target=create_console)
         t1.daemon = True
@@ -35,8 +39,16 @@ def create_app():
         #t2.daemon = True
         #t2.start()
 
+    def initialize_game():
+        print('Loading zones...')
+        addZones()
+        print('Added {} zones'.format(len(zones)))
+        print('Loading checkpoints')
+        addCheckpoints()
+        print('Added {} checkpoints'.format(len(checkpoints)))
 
-    initialize()
+    initialize_console()
+    initialize_game()
     return app
 
 
@@ -57,6 +69,7 @@ def calculateScore():
             if c.points != points:
                 pointsdiff = points - c.points
                 t.points = t.points + pointsdiff
+                c.points = points
         t.pointspm = pointspm
 
 
@@ -172,6 +185,20 @@ def console():
                     printTeams(teams)
                 elif x[1] == "zones":
                     printZones(zones)
+                elif x[1] == "conquers":
+                    for t in teams:
+                        print(t.name, t.conquers)
+                elif x[1] == "checkpoints2":
+                    for t in teams:
+                        print(t.name, t.checkpoints)
+                elif x[1] == "team":
+                    for t in teams:
+                        if t.id == int(x[2]):
+                            print(t.conquers)
+                elif x[1] == "group":
+                    for g in groups:
+                        if g.id == int(x[2]):
+                            print(g.team.conquers)
 
             elif x[0] == "quit":
                 y = input("WARNING: Weet je het zeker? [y/n]")
@@ -182,6 +209,28 @@ def console():
                 print('ERROR: Input niet correct. Typ "help" voor de syntax')
         except IndexError:
             print('ERROR: Input niet correct. Typ "help" voor de syntax')
+
+
+def addZones():
+    zones.append(Zone(len(zones), 'Aap'))
+    zones.append(Zone(len(zones), 'Beer'))
+
+def addCheckpoints():
+    with open('checkpoints.txt') as f:
+        lines = f.readlines()
+    try:
+        for l in lines:
+            w = l.split()
+            zone = next((y for y in zones if y.id == int(w[1])), None)
+            if zone is None:
+                print("ERROR: Zone met ID {} bestaat niet!".format(w[1]))
+                continue
+            checkpoint = Checkpoint(str(w[0]), zone, float(w[2]), float(w[3]))
+            checkpoints.append(checkpoint)
+            zone.checkpoints.append(checkpoint)
+    except IndexError:
+        print("ERROR: De input in het bestand is ongeldig.")
+    f.close()
 
 
 def printCheckpoints(item):
@@ -200,13 +249,13 @@ def printGroups(item):
 
 def printTeams(item):
     print("Printing teams..." + str(len(item)))
-    stringformat = "{:<4} {:<10} {}"
-    print(stringformat.format('ID', 'Naam', 'Points'))
+    stringformat = "{:<4} {:<14} {:<8} {}"
+    print(stringformat.format('ID', 'Naam', 'Points', 'Points/m'))
     for i in item:
-        print(stringformat.format(i.id, i.name, i.points))
+        print(stringformat.format(i.id, i.name, i.points, i.pointspm))
 
 def printZones(item):
-    stringformat = "{:<4} {:<10} {:<10} {}"
+    stringformat = "{:<4} {:<14} {:<10} {}"
     print(stringformat.format('ID', 'Naam', 'Eigenaar', 'tijd'))
     for i in item:
         if i.owner is None:
@@ -247,35 +296,40 @@ def attack():
         abort(400)
     print(request.json.get('reply', ''))
     group = findgroup(request.json.get("token"))
+    team = group.team
     checkpoint = next((x for x in checkpoints if x.name == request.json.get('name')), None)
     if (group == None and checkpoint == None):
         return jsonify({"success": False, "error": "Deze checkpoint of groep bestaat niet (meer)!"})
     if ((datetime.utcnow() - checkpoint.zone.timeconquered).total_seconds() < 180.0):
         return jsonify({"success": False, "error": "Deze zone nog tijdelijk geblokkeerd!"})
-    if (checkpoint in group.team.checkpoints):
+    if (checkpoint in team.checkpoints):
         return jsonify({"success": False, "error": "Je team heeft deze checkpoint al!"})
     distance = calculateDistance(request.json.get('lat'), request.json.get('long'), checkpoint.lat, checkpoint.long)
     if (distance > distanceThreshold):
         return jsonify({"success": False, "error": "Je bent niet dichtbij genoeg dit checkpoint!"})
 
-    group.team.checkpoints.append(checkpoint)
+    team.checkpoints.append(checkpoint)
     count = 0
     for c in checkpoint.zone.checkpoints:
-        if c in group.team.checkpoints:
+        if c in team.checkpoints:
             count += 1
     if count >= 3:
         zone = checkpoint.zone
         if zone.owner is not None:
             oldteam = zone.owner
-            oldconquer = (c for c in oldteam.conquers if c.zone == zone)
-            oldteam.conquers.delete(oldconquer)
-        zone.owner = group.team
-        group.team.conquers.append(Conquer(zone))
+            oldconquer = zone.conquer
+            oldteam.conquers.remove(oldconquer)
+        zone.owner = team
+
+        newconquer = Conquer(zone)
+        team.conquers.append(newconquer)
+        zone.conquer = newconquer
         zone.timeconquered = datetime.utcnow()
 
         for c in checkpoint.zone.checkpoints:
-            if c in group.team.checkpoints:
-                group.team.checkpoints.remove(c)
+            for t in teams:
+                if c in t.checkpoints:
+                    t.checkpoints.remove(c)
 
         alert = {"alerttype": "success",
                  "alert": "Je team heeft succesvol zone {} veroverd!".format(checkpoint.zone.name)}
@@ -294,10 +348,21 @@ def updateScore():
     def updateZones():
         zoneDict = {}
         for z in zones:
+            zoneDict2 = {}
             if z.owner is None:
-                zoneDict[z.id] = None
+                zoneDict2["owner"] = None
+                zoneDict2["lock"] = False
+                zoneDict2["star"] = False
             else:
-                zoneDict[z.id] = z.owner.id
+                zoneDict2["owner"] = z.owner.id
+                timediff = (datetime.utcnow() - z.timeconquered).seconds / 60
+                if(timediff < 3.0):
+                    zoneDict2["lock"] = True
+                    zoneDict2["star"] = False
+                elif(timediff >= 10.0):
+                    zoneDict2["lock"] = False
+                    zoneDict2["star"] = True
+            zoneDict[z.id] = zoneDict2
         nestedDict['zones'] = zoneDict
 
 
@@ -391,3 +456,7 @@ def calculateDistance(lat1pre, long1pre, lat2pre, long2pre):
 
     distance = R * c
     return distance
+
+
+if __name__ == '__main__':
+    app.run()
