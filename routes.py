@@ -118,7 +118,7 @@ def console():
                 print("SUCCESS: Team {} heeft de aanval van team {} afgeslagen".format(defenders.team.id, attackers.team.id))
 
             elif x[0] == "add":
-                if x[1] == "checkpoints":
+                '''if x[1] == "checkpoints":
                     with open('checkpoints.txt') as f:
                         lines = f.readlines()
                     try:
@@ -156,9 +156,9 @@ def console():
                         print("SUCCESS: Groep toegevoegd")
 
                 elif x[1] == "zone":
-                    zones.append(Zone(len(zones), x[2]))
+                    zones.append(Zone(len(zones), x[2]))'''
 
-                elif x[1] == "notification":
+                if x[1] == "notification":
                     group = next((g for g in groups if g.id == int(x[2])), None)
                     print(group.token)
                     message = ""
@@ -215,7 +215,7 @@ def addZones():
                 continue
             coordinates = []
             for i in range(1, len(w), 2):
-                coordinates.append([w[i], w[i+1]])
+                coordinates.append([float(w[i]), float(w[i+1])])
 
             zone = Zone(len(zones), w[0], coordinates)
             zones.append(zone)
@@ -477,6 +477,30 @@ def create():
     groups.append(m)
     return jsonify({"success": True, "token": token})
 
+
+@app.route('/api/v1.1/listzones', methods=['GET'])
+def listzones():
+    result = {}
+    for z in zones:
+        nestedDict = {}
+        nestedDict['name'] = z.name
+        nestedDict['coordinates'] = z.coordinates
+        nestedDict['checkpoints'] = []
+        for c in z.checkpoints:
+            nestedDict['checkpoints'].append([c.lat, c.long])
+        result[z.id] = nestedDict
+    return jsonify(result)
+
+
+@app.route('/api/v1.1/listteams', methods=['GET'])
+def listteams():
+    result = {}
+    for t in teams:
+        nestedDict = {}
+        nestedDict['name'] = t.name
+        nestedDict['color'] = t.color
+        result[t.id] = nestedDict
+    return jsonify(result)
 
 def calculateDistance(lat1pre, long1pre, lat2pre, long2pre):
     R = 6371000.0
