@@ -1,3 +1,3 @@
 source venv/bin/activate
-gunicorn routes:app
+gunicorn -b :8000 routes:app
 source deactivate
