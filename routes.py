@@ -337,14 +337,22 @@ def attack():
     team = group.team
     checkpoint = next((x for x in checkpoints if x.name == request.json.get('name')), None)
     if (group == None and checkpoint == None):
-        return jsonify({"success": False, "error": "Deze checkpoint of groep bestaat niet (meer)!"})
+        response = jsonify({"success": False, "error": "Deze checkpoint of groep bestaat niet (meer)!"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     if ((datetime.utcnow() - checkpoint.zone.timeconquered).total_seconds() < 180.0):
-        return jsonify({"success": False, "error": "Deze zone nog tijdelijk geblokkeerd!"})
+        response = jsonify({"success": False, "error": "Deze zone nog tijdelijk geblokkeerd!"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     if (checkpoint in team.checkpoints):
-        return jsonify({"success": False, "error": "Je team heeft deze checkpoint al!"})
+        response = jsonify({"success": False, "error": "Je team heeft deze checkpoint al!"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
     distance = calculateDistance(request.json.get('lat'), request.json.get('long'), checkpoint.lat, checkpoint.long)
     if (distance > distanceThreshold):
-        return jsonify({"success": False, "error": "Je bent niet dichtbij genoeg dit checkpoint!"})
+        response = jsonify({"success": False, "error": "Je bent niet dichtbij genoeg dit checkpoint!"})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
     team.checkpoints.append(checkpoint)
     count = 0
@@ -373,7 +381,9 @@ def attack():
                  "alert": "Je team heeft succesvol zone {} veroverd!".format(checkpoint.zone.name)}
         for g in group.team.groups:
             g.notifications.append(alert)
-    return jsonify({'success': True})
+    response = jsonify({'success': True})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 @app.route('/api/v1.0/update', methods=["GET"])
@@ -415,7 +425,9 @@ def updateScore():
 
     updateZones()
     updatePoints()
-    return jsonify(nestedDict)
+    response = jsonify(nestedDict)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 @app.route('/api/v1.0/update', methods=['POST'])
@@ -448,7 +460,9 @@ def updatePlayer():
         dict = {"success": True,
                 "alerttype": None,
                 "alert": None}
-    return jsonify(dict)
+    response = jsonify(dict)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 @app.route('/api/v1.0/create', methods=["POST"])
@@ -475,7 +489,10 @@ def create():
         group.addMember(m)
     group.team.groups.append(group)
     groups.append(m)
-    return jsonify({"success": True, "token": token})
+    response = jsonify({"success": True, "token": token})
+
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 @app.route('/api/v1.1/listzones', methods=['GET'])
@@ -489,7 +506,9 @@ def listzones():
         for c in z.checkpoints:
             nestedDict['checkpoints'].append([c.lat, c.long])
         result[z.id] = nestedDict
-    return jsonify(result)
+    response = jsonify(result)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 
 @app.route('/api/v1.1/listteams', methods=['GET'])
@@ -500,7 +519,9 @@ def listteams():
         nestedDict['name'] = t.name
         nestedDict['color'] = t.color
         result[t.id] = nestedDict
-    return jsonify(result)
+    response = jsonify(result)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
 
 def calculateDistance(lat1pre, long1pre, lat2pre, long2pre):
     R = 6371000.0

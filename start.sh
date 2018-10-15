@@ -1,3 +1,1 @@
-source venv/bin/activate
-gunicorn -b :8000 routes:app
-source deactivate
+gunicorn --certfile="/var/www/clients/client1/web2/ssl/kvls.nl-le.crt" --keyfile="/var/www/clients/client1/web2/ssl/kvls.nl-le.key" -b 0.0.0.0:8000 routes:app
