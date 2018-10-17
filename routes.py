@@ -558,7 +558,7 @@ def listteams():
     return response
 
 
-@app.route('api/v1.2/update', methods=['GET'])
+@app.route('/api/v1.2/update', methods=['GET'])
 def updateScoreV2():
     nestedDict = {}
 
