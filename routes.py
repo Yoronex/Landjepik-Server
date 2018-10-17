@@ -70,11 +70,11 @@ def calculateScore():
     for t in teams:
         if t.points >= config.goals['points']:
             endgame(t, 'punten')
-        elif t.conquers >= config.goals['conquers']:
+        elif t.conquers_count >= config.goals['conquers']:
             endgame(t, 'veroveringen')
         elif t.defences >= config.goals['defences']:
             endgame(t, 'verdedigingen')
-        elif t.possessed_zones >= config.goals['possessed_zones']:
+        elif len(t.conquers) >= config.goals['possessed_zones']:
             endgame(t, 'zone bezit')
 
 
@@ -590,8 +590,8 @@ def updateScoreV2():
             temp = {}
             temp['points'] = t.points
             temp['pointspm'] = t.pointspm
-            temp['possessed_zones'] = t.possessed_zones
-            temp['conquers'] = t.conquers
+            temp['possessed_zones'] = len(t.conquers)
+            temp['conquers'] = t.conquers_count
             temp['defences'] = t.defences
             temp['color'] = t.color
             teamsDict[t.id] = temp
