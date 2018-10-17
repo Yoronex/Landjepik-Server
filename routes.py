@@ -2,16 +2,19 @@ from models import *
 from flask import Flask, request, abort, jsonify, render_template, Response
 from math import sin, cos, sqrt, atan2, radians
 import secrets
+import config.config as config
 import atexit
 import threading
 import sys
 import os.path
 
 teams = []
-distanceThreshold = 15.0
 groups = []
 zones = []
 checkpoints = []
+playing = True
+winner = None
+victory = None
 
 def create_app():
     app = Flask(__name__)
@@ -64,6 +67,23 @@ def calculateScore():
                 c.points = points
         t.pointspm = pointspm
 
+    for t in teams:
+        if t.points >= config.goals['points']:
+            endgame(t, 'punten')
+        elif t.conquers >= config.goals['conquers']:
+            endgame(t, 'veroveringen')
+        elif t.defences >= config.goals['defences']:
+            endgame(t, 'verdedigingen')
+        elif t.possessed_zones >= config.goals['possessed_zones']:
+            endgame(t, 'zone bezit')
+
+
+def endgame(team, how):
+    global winner, playing, victory
+    winner = team
+    playing = False
+    victory = how
+
 
 def create_console():
     t3 = threading.Thread(target=console)
@@ -78,7 +98,7 @@ def create_console():
     print("Tot ziens!")
 
 def load_zones():
-    with open('zones.txt') as f:
+    with open('config/zones.txt') as f:
         lines = f.readlines()
     try:
         for l in lines:
@@ -94,7 +114,7 @@ def console():
             x = input(">>> ").split()
 
             if x[0] == "help":
-                helpfile = open('help.txt', 'r')
+                helpfile = open('config/help.txt', 'r')
                 print(helpfile.read())
                 helpfile.close()
 
@@ -116,6 +136,8 @@ def console():
                                   "Team {} zal het gebied zo snel mogelijk verlaten".format(attackers.team.name)}
                 defenders.notifications.append(alert)
                 print("SUCCESS: Team {} heeft de aanval van team {} afgeslagen".format(defenders.team.id, attackers.team.id))
+
+                defenders.defences = defenders.defences + 1
 
             elif x[0] == "add":
                 '''if x[1] == "checkpoints":
@@ -194,6 +216,15 @@ def console():
                         if g.id == int(x[2]):
                             print(g.team.conquers)
 
+            elif x[0] == 'reset':
+                for t in teams:
+                    t.__init__(t.id, t.name, t.color)
+                for z in zones:
+                    z.__init__(z.id, z.name, z.coordinates)
+                global winner, victory
+                winner = None
+                victory = None
+
             elif x[0] == "quit":
                 y = input("WARNING: Weet je het zeker? [y/n]")
                 if y == "y":
@@ -206,7 +237,7 @@ def console():
 
 
 def addZones():
-    with open('zones.txt') as f:
+    with open('config/zones.txt') as f:
         lines = f.readlines()
     try:
         for l in lines:
@@ -225,7 +256,7 @@ def addZones():
 
 
 def addCheckpoints():
-    with open('checkpoints.txt') as f:
+    with open('config/checkpoints.txt') as f:
         lines = f.readlines()
     try:
         for l in lines:
@@ -245,7 +276,7 @@ def addCheckpoints():
 
 
 def addTeams():
-    with open('teams.txt') as f:
+    with open('config/teams.txt') as f:
         lines = f.readlines()
     try:
         for l in lines:
@@ -349,7 +380,7 @@ def attack():
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
     distance = calculateDistance(request.json.get('lat'), request.json.get('long'), checkpoint.lat, checkpoint.long)
-    if (distance > distanceThreshold):
+    if (distance > config.distanceThreshold):
         response = jsonify({"success": False, "error": "Je bent niet dichtbij genoeg dit checkpoint!"})
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
@@ -381,6 +412,9 @@ def attack():
                  "alert": "Je team heeft succesvol zone {} veroverd!".format(checkpoint.zone.name)}
         for g in group.team.groups:
             g.notifications.append(alert)
+
+        team.conquers = team.conquers + 1
+
     response = jsonify({'success': True})
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
@@ -520,6 +554,54 @@ def listteams():
         nestedDict['color'] = t.color
         result[t.id] = nestedDict
     response = jsonify(result)
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    return response
+
+
+@app.route('api/v1.2/update', methods=['GET'])
+def updateScoreV2():
+    nestedDict = {}
+
+
+    def updateZones():
+        zoneDict = {}
+        for z in zones:
+            zoneDict2 = {}
+            if z.owner is None:
+                zoneDict2["owner"] = None
+                zoneDict2["lock"] = False
+                zoneDict2["star"] = False
+            else:
+                zoneDict2["owner"] = z.owner.id
+                timediff = (datetime.utcnow() - z.timeconquered).seconds / 60
+                if(timediff < 3.0):
+                    zoneDict2["lock"] = True
+                    zoneDict2["star"] = False
+                elif(timediff >= 10.0):
+                    zoneDict2["lock"] = False
+                    zoneDict2["star"] = True
+            zoneDict[z.id] = zoneDict2
+        return zoneDict
+
+
+    def updateTeamScore():
+        teamsDict = {}
+        for t in teams:
+            temp = {}
+            temp['points'] = t.points
+            temp['pointspm'] = t.pointspm
+            temp['possessed_zones'] = t.possessed_zones
+            temp['conquers'] = t.conquers
+            temp['defences'] = t.defences
+            temp['color'] = t.color
+            teamsDict[t.id] = temp
+        return teamsDict
+
+
+    nestedDict['zones'] = updateZones()
+    nestedDict['teams'] = updateTeamScore()
+    nestedDict['goals'] = config.goals
+    response = jsonify(nestedDict)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 

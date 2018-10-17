@@ -30,6 +30,8 @@ class Team:
         self.conquers = []
         self.groups = []
         self.color = color
+        self.conquers = 0
+        self.defences = 0
 
 
 class Group:
