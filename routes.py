@@ -15,6 +15,8 @@ checkpoints = []
 playing = True
 winner = None
 victory = None
+timefinished = None
+
 
 def create_app():
     app = Flask(__name__)
@@ -79,10 +81,11 @@ def calculateScore():
 
 
 def endgame(team, how):
-    global winner, playing, victory
+    global winner, playing, victory, timefinished
     winner = team
     playing = False
     victory = how
+    timefinished = datetime.utcnow() + timedelta(hours=2)
 
 
 def create_console():
@@ -215,6 +218,8 @@ def console():
                     for g in groups:
                         if g.id == int(x[2]):
                             print(g.team.conquers)
+                else:
+                    raise IndexError("No second input")
 
             elif x[0] == 'reset':
                 for t in teams:
@@ -224,6 +229,7 @@ def console():
                 global winner, victory
                 winner = None
                 victory = None
+                timefinished = None
 
             elif x[0] == "quit":
                 y = input("WARNING: Weet je het zeker? [y/n]")
@@ -604,6 +610,18 @@ def updateScoreV2():
     response = jsonify(nestedDict)
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response
+
+
+@app.route('/api/v1.2/gamestate', methods=['GET'])
+def gamestate():
+    if playing == False:
+        if winner is not None:
+            return jsonify({"status": "starting", "time": config.returnstarttime().second, "message": None})
+        else:
+            return jsonify({"status": "ended", "time": timefinished.second, "message": "Team {} heeft gewonnen met {}!".format(winner.name, victory)})
+    else:
+        return jsonify({"status": "busy", "time": None, "message": None})
+
 
 def calculateDistance(lat1pre, long1pre, lat2pre, long2pre):
     R = 6371000.0
